@@ -1,0 +1,15 @@
+# Large data
+*.h5ad
+*.zip
+
+# Notebooks (local analysis only)
+*.ipynb
+
+# Output / results
+QC_figures/
+multimodal_results_EMT/
+segmentation_results/
+ssgsea_figures/
+
+# Images
+*.png
