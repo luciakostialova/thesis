@@ -5,7 +5,7 @@
 *.json
 
 # Notebooks (local analysis only)
-# *.ipynb
+DLPFC.ipynb
 environment_metacentrum.yaml
 
 # Output / results
