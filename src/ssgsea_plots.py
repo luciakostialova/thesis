@@ -4,20 +4,12 @@ from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import anndata as ad
-from typing import Dict, List, Tuple, Optional, Union
-
 from matplotlib.colors import ListedColormap, to_rgb
-from typing import List
-import squidpy as sq
-from skimage import io, segmentation
-from skimage.draw import disk
 import skimage
-from scipy import ndimage as ndi
 from matplotlib.colors import TwoSlopeNorm
 
-
+''' Plots clusters and ssGSEA scores on the tissue. The images are saved.'''
 
 # plot the scores per cluster
 def score_per_cluster(adata, ssgsea_df, gene_set,  # column name in ssgsea_df

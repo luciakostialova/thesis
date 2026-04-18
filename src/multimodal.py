@@ -165,6 +165,7 @@ def run_img_segmentation(
     superpixel: str = "slic",
     res: str = "hires"
     ):
+    ''' Run image segmentation for the given adata and save the segmentation labels and distances to adata.'''
 
     output_path = Path(output_dir)
     output_path.mkdir(exist_ok=True)

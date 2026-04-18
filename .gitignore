@@ -1,15 +1,20 @@
 # Large data
 *.h5ad
 *.zip
+*.csv
+*.json
 
 # Notebooks (local analysis only)
-*.ipynb
+# *.ipynb
+environment_metacentrum.yaml
 
 # Output / results
 QC_figures/
 multimodal_results_EMT/
 segmentation_results/
 ssgsea_figures/
+multimodal_results_*/
+BRCA1/
 
 # Images
 *.png

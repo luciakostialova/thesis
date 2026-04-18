@@ -34,7 +34,7 @@ class ssGSEA:
 
             try:
                 # Compute RS + ES
-                rs, es = self.compute_running_sum_statistic(
+                rs, es = self._compute_running_sum_statistic(
                     adata, gene_set, layer=layer, tau=tau
                 )
 
@@ -57,7 +57,7 @@ class ssGSEA:
         return results
 
 
-    def compute_gene_set_cdf(self, adata, gene_set, layer=None, tau=0.25):  # add weight param!!!
+    def _compute_gene_set_cdf(self, adata, gene_set, layer=None, tau=0.25):  # add weight param!!!
         """
         Compute empirical CDF of a gene set S over ranked genes for each spot.
 
@@ -133,7 +133,7 @@ class ssGSEA:
         return cdf
 
 
-    def compute_background_cdf(self, adata, gene_set, layer=None):
+    def _compute_background_cdf(self, adata, gene_set, layer=None):
         """
         Compute empirical CDF over genes NOT in gene_set,
         using mean gene expression across all spots.
@@ -190,7 +190,7 @@ class ssGSEA:
         return cdf
 
 
-    def compute_running_sum_statistic(self, adata, gene_set, layer=None, tau=0.25):
+    def _compute_running_sum_statistic(self, adata, gene_set, layer=None, tau=0.25):
         """
         Compute running sum (ssGSEA-like enrichment) for all spots.
 
@@ -201,12 +201,12 @@ class ssGSEA:
         """
 
         # Foreground (per spot)
-        cdf_S = self.compute_gene_set_cdf(
+        cdf_S = self._compute_gene_set_cdf(
             adata, gene_set, layer=layer, tau=tau
         )
 
         # Background (global)
-        cdf_Sc = self.compute_background_cdf(
+        cdf_Sc = self._compute_background_cdf(
             adata, gene_set, layer=layer
         )
 

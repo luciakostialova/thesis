@@ -1,6 +1,6 @@
 import pandas as pd
-import numpy as np
 import anndata as ad
+import numpy as np
 from scipy.spatial.distance import pdist, squareform
 from sklearn.preprocessing import MinMaxScaler
 from typing import Optional, Literal
@@ -13,7 +13,6 @@ def _get_geneset_distance(adata: ad.AnnData, ssgsea_df: pd.DataFrame, distance: 
     The distance matrix is saved to adata. '''
     scaler = MinMaxScaler()
 
-    # ssgsea_dist = pdist(ssgsea_df, 'correlation')
     ssgsea_dist = pdist(ssgsea_df.to_numpy().reshape(-1,1), metric=distance)  # for 1 set / variable
     ssgsea_dist = squareform(ssgsea_dist)
     ssgsea_dist_scaled = scaler.fit_transform(ssgsea_dist)
@@ -41,8 +40,6 @@ def _get_geneexpr_distance(adata: ad.AnnData, distance: Optional[Literal["euclid
         distance used to compute gene expression distance metric.
     pca: bool = True
         compute on principal components    
-    
-    FIX: add options for correlation. 
     """
     
     scaler = MinMaxScaler()
@@ -61,9 +58,3 @@ def _get_geneexpr_distance(adata: ad.AnnData, distance: Optional[Literal["euclid
     adata.obsp[f'geneexpr_{distance}_dist_scaled'] = geneexpr_dist_scaled
 
     return geneexpr_dist_scaled, geneexpr_dist
-
-
-# geneexpr_corr = np.corrcoef(adata.X.toarray())
-# geneexpr_dist = 1 - geneexpr_corr
-# geneexpr_dist_scaled = scaler.fit_transform(geneexpr_dist)
-# adata.obsp['geneexpr_correlation'] = geneexpr_corr
