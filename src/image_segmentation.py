@@ -1,13 +1,3 @@
-"""
-Image segmentation is performed, the adjacent distance is computed and saved to adata.
-There are two algorithms to choose from that perform the image segmentation.
-The first is SLIC. details
-The second algorithm is SEED. details.
-
-FIX: add algorithm details to comments; set superpixel params as voluntary params to set in main function.
-CHECK for params passed through the functions if necessary.
-"""
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,7 +11,22 @@ from sklearn.preprocessing import MinMaxScaler
 from typing import Optional, Literal, Tuple
 import cv2
 
-def _perform_segmentation(adata: ad.AnnData, image, coords, sigma: int = 0, superpixel: Optional[Literal["slic", "seed"]] = None):   
+"""
+Image segmentation is performed, the adjacent distance is computed and saved to adata.
+There are two algorithms to choose from that perform the image segmentation.
+The first is SLIC. This algorithm generates superpixels by clustering pixels based on their color similarity and proximity in the image plane. This is done in the five-dimensional [labxy] space, where [lab] is the pixel color vector in CIELAB color space and xy is the pixel position. 
+
+The second algorithm is SEED. This algorithm is not mentioned in the thesis, however it is kept in code as a valid option to SLIC algorithm.  details. Starting from a regular grid as initial superpixel segmentation, the approach is based on an energy composed of a boundary term and a color distribution term which is optimized using hill climbing by randomly exchanging pixels or blocks of pixels between neighboring superpixels. For each superpixel, the color distribution term enforces homogeneity in color based on color histograms, whereas the boundary term favors a smooth shape using superpixel histograms
+
+As of now, the algorithm default parameters are fixed for the invasive ductal carcinoma dataset. See superpixels.ipynb for more details. 
+"""
+
+def perform_segmentation(adata: ad.AnnData, 
+                         image, 
+                         coords, 
+                         sigma: int = 0, 
+                         superpixel: Optional[Literal["slic", "seed"]] = None,
+                         superpixel_params: Optional[dict] = None):   
     """ 
     Image segmentation is performed by SLIC or SEED superpixel segmentation algorithm. 
     The parameters are set to fit the specific BRCA image.
@@ -44,6 +49,33 @@ def _perform_segmentation(adata: ad.AnnData, image, coords, sigma: int = 0, supe
     coords: 
         coordinates of spatial barcodes on the tissue
     """
+    # --- Default parameters ---
+    DEFAULT_SEED_PARAMS = dict(
+        num_superpixels=400,
+        num_levels=4,  # Number of block levels. The more levels, the more accurate is the segmentation
+        prior=3,  # enable 3x3 shape smoothing term if >0. A larger value leads to smoother shapes. prior must be in the range [0, 5]. 
+        num_histogram_bins=15,
+        num_iterations=80,
+        double_step=True,  # If true, iterate each block level twice for higher accuracy.
+    )
+    
+    DEFAULT_SLIC_PARAMS = dict(
+        num_superpixels=400,  # The (approximate) number of labels in the segmented output image.
+        compactness=15.0, # color proximity and space proximity tradeoff. Higher values give more weight to space proximity, superpixels are more square/cubic.
+        max_num_iter=80,  # Maximum number of iterations of k-means.
+        enforce_connectivity=True,  # Whether the generated segments are connected or not
+    )
+
+    if superpixel == "seed":
+        params = DEFAULT_SEED_PARAMS.copy()
+        if superpixel_params:
+            params.update(superpixel_params)
+    
+    elif superpixel == "slic":
+        params = DEFAULT_SLIC_PARAMS.copy()
+        if superpixel_params:
+            params.update(superpixel_params)
+    
     segmentation_key = f'segmentation_{superpixel}_sigma{sigma}'
     library_id = list(adata.uns['spatial'].keys())[0]
 
@@ -55,47 +87,53 @@ def _perform_segmentation(adata: ad.AnnData, image, coords, sigma: int = 0, supe
             smoothed = gaussian(image, sigma=sigma, channel_axis=-1, preserve_range=True).astype(np.uint8)
         else:
             smoothed = image.copy()
-    
-        if superpixel == 'seed':
-            # params
-            num_superpixels = 400
-            num_levels = 4  # Number of block levels. The more levels, the more accurate is the segmentation
-            prior = 3  # enable 3x3 shape smoothing term if >0. A larger value leads to smoother shapes. prior must be in the range [0, 5]. 
-            num_histogram_bins = 15
-            num_iterations = 40
-            double_step	= True  # If true, iterate each block level twice for higher accuracy.
-            
+
+        
+        if superpixel == "seed":
             smoothed_bgr = cv2.cvtColor(smoothed, cv2.COLOR_RGB2BGR)
-    
-            seeds = cv2.ximgproc.createSuperpixelSEEDS(width,  height, channels, num_superpixels, 
-                                                       num_levels, prior, num_histogram_bins, double_step)
-            seeds.iterate(smoothed_bgr, num_iterations)
+        
+            seeds = cv2.ximgproc.createSuperpixelSEEDS(
+                width,
+                height,
+                channels,
+                params["num_superpixels"],
+                params["num_levels"],
+                params["prior"],
+                params["num_histogram_bins"],
+                params["double_step"],
+            )
+        
+            seeds.iterate(smoothed_bgr, params["num_iterations"])
             labels = seeds.getLabels()
             n_labels = seeds.getNumberOfSuperpixels()
         
-            mask = seeds.getLabelContourMask(thick_line=True)        
+            mask = seeds.getLabelContourMask(thick_line=True)
             overlay_bgr = smoothed_bgr.copy()
             overlay_bgr[mask == 255] = [0, 255, 0]
-        
-            # Convert back BGR → RGB for plotting
             overlay = cv2.cvtColor(overlay_bgr, cv2.COLOR_BGR2RGB)
-            print('SEED segmentation')
+        
+            print("SEED segmentation")
     
-        elif superpixel == 'slic':
-            # params
-            num_superpixels = 400    # The (approximate) number of labels in the segmented output image.
-            compactness = 20.0      
-            # color proximity and space proximity tradeoff. Higher values give more weight to space proximity, superpixels are more square/cubic.
-            max_num_iter = 80  # Maximum number of iterations of k-means.
-            enforce_connectivity = True  # Whether the generated segments are connected or not
-            
-            # SLIC segmentation
-            labels = slic(smoothed, n_segments=num_superpixels, compactness=compactness, max_num_iter=max_num_iter, 
-                  start_label=1, channel_axis=-1, enforce_connectivity=enforce_connectivity)
-            # Overlay boundaries
-            overlay = mark_boundaries(smoothed,labels, color=(0, 1, 0), mode="thick")
+        elif superpixel == "slic":
+            labels = slic(
+                smoothed,
+                n_segments=params["num_superpixels"],
+                compactness=params["compactness"],
+                max_num_iter=params["max_num_iter"],
+                start_label=1,
+                channel_axis=-1,
+                enforce_connectivity=params["enforce_connectivity"],
+            )
+        
+            overlay = mark_boundaries(
+                smoothed,
+                labels,
+                color=(0, 1, 0),
+                mode="thick",
+            )
+        
             n_labels = len(np.unique(labels))
-            print('SLIC segmentation')
+            print("SLIC segmentation")
 
         
         plt.figure(figsize=(8, 8))
@@ -109,18 +147,13 @@ def _perform_segmentation(adata: ad.AnnData, image, coords, sigma: int = 0, supe
         adata.uns['spatial'][library_id][segmentation_key] = {}
         adata.uns['spatial'][library_id][segmentation_key]['segmentation_labels'] = labels
         adata.uns['spatial'][library_id][segmentation_key]['sigma'] = sigma
+        adata.uns["spatial"][library_id][segmentation_key]["params"] = params
 
     else:  
         labels = adata.uns['spatial'][library_id][segmentation_key]['segmentation_labels']
         sigma = adata.uns['spatial'][library_id][segmentation_key]['sigma']
         print(f'Image segmentation has already been done.')
         print(f'Number of SLIC segments, sigma={sigma} : {len(np.unique(labels))}')
-        # filtered_img = gaussian(image, sigma=sigma)
-        # img_flt = img_as_float(filtered_img)
-        # plt.figure(figsize=(8, 8))
-        # plt.imshow(mark_boundaries(smoothed,labels, color=(0, 1, 0), mode="thick"))
-        # plt.title(f"σ = {sigma} | superpixel = {n_labels}")
-        # plt.axis('off')
 
 def segmentation_distance(adata: ad.AnnData, labels, coords):
     """ 
@@ -153,7 +186,7 @@ def segmentation_distance(adata: ad.AnnData, labels, coords):
     return segmentation_dist
 
 
-def _get_segmentation_distance(adata: ad.AnnData, coords, sigma: int = 0, superpixel: Optional[Literal["slic", "seed"]] = None):
+def get_segmentation_distance(adata: ad.AnnData, coords, sigma: int = 0, superpixel: Optional[Literal["slic", "seed"]] = None):
     """  
     The segmentation distance is computed via `segmentation_distance`, scaled and saved to adata. 
     Parameters

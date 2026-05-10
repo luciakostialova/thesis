@@ -1,14 +1,17 @@
 from scipy.sparse import issparse
 import numpy as np
 import json
+import pandas as pd
+import anndata as ad
 
-''' Computes ssGSEA normalised enrichment scores as described in thesis Methods chapter. '''
+''' Computes adaptation of ssGSEA normalised enrichment scores as described in thesis Methods chapter. '''
 
 class ssGSEA:
 
-    def compute_ssgsea(self, adata, json_path, layer=None, tau=0.25, normalise=True):  # add correct normalisation!!!
+    def compute_ssgsea(self, adata: ad.AnnData, json_path: str, layer=None, tau=0.25, normalise=True) -> pd.DataFrame:
         """
         Compute variation of normalised enrichment scores (NES) for all gene sets if normalise is set to True.
+        Normalisation is done across all samples for individual gene sets. 
 
         Parameters
         ----------
@@ -20,7 +23,7 @@ class ssGSEA:
         Returns
         -------
         results : dict
-            {gene_set_name: (normalized) ES (n_spots,)}
+            {gene_set_name: (normalised) ES (n_spots,)}
         """
 
         # Load gene sets
@@ -34,7 +37,7 @@ class ssGSEA:
 
             try:
                 # Compute RS + ES
-                rs, es = self._compute_running_sum_statistic(
+                rs, es = self.compute_running_sum_statistic(
                     adata, gene_set, layer=layer, tau=tau
                 )
 
@@ -42,7 +45,7 @@ class ssGSEA:
                     es_min = np.min(es)
                     es_max = np.max(es)
 
-                    nes = (es) / (es_max - es_min)  # as in Barbie et al 2009, and GSVA implementation of ssGSEA
+                    nes = (es) / (es_max - es_min)  # as in Barbie et al 2009
                     results[gs_name] = nes
                 else:
                     results[gs_name] = es
@@ -50,14 +53,11 @@ class ssGSEA:
             except Exception as e:
                 print(f"Skipping {gs_name}: {e}")
                 continue
-
-        # for gs_name, nes in results.items():
-        #     adata.obs[gs_name] = nes
             
         return results
 
 
-    def _compute_gene_set_cdf(self, adata, gene_set, layer=None, tau=0.25):  # add weight param!!!
+    def compute_gene_set_cdf(self, adata: ad.AnnData, gene_set: list[str], layer=None, tau=0.25) -> np.ndarray:
         """
         Compute empirical CDF of a gene set S over ranked genes for each spot.
 
@@ -133,7 +133,7 @@ class ssGSEA:
         return cdf
 
 
-    def _compute_background_cdf(self, adata, gene_set, layer=None):
+    def compute_background_cdf(self, adata: ad.AnnData, gene_set: list[str], layer=None) -> np.ndarray:
         """
         Compute empirical CDF over genes NOT in gene_set,
         using mean gene expression across all spots.
@@ -190,7 +190,7 @@ class ssGSEA:
         return cdf
 
 
-    def _compute_running_sum_statistic(self, adata, gene_set, layer=None, tau=0.25):
+    def compute_running_sum_statistic(self, adata: ad.AnnData, gene_set: list[str], layer=None, tau=0.25) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute running sum (ssGSEA-like enrichment) for all spots.
 
@@ -201,12 +201,12 @@ class ssGSEA:
         """
 
         # Foreground (per spot)
-        cdf_S = self._compute_gene_set_cdf(
+        cdf_S = self.compute_gene_set_cdf(
             adata, gene_set, layer=layer, tau=tau
         )
 
         # Background (global)
-        cdf_Sc = self._compute_background_cdf(
+        cdf_Sc = self.compute_background_cdf(
             adata, gene_set, layer=layer
         )
 

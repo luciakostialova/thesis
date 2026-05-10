@@ -1,6 +1,5 @@
-""" Plots the clusters and cluster boundaries on the tissue. The images are saved.""" 
-
 import numpy as np
+import anndata as ad
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, to_rgb
 from typing import List
@@ -10,10 +9,36 @@ from skimage.draw import disk
 import skimage
 from scipy import ndimage as ndi
 
-def thesis_clusters(adata, library_id: str = '', res: str='hires', colour: str = 'multires_clst', k: int = 20, alpha: float=0.0, lw: float=0.9,
-                           title: str = '', save_path: str = '.'):
-    if library_id == '':
-        library_id = list(adata.uns['spatial'].keys())[0]
+""" Plots the clusters and cluster boundaries on the tissue. The images are saved.""" 
+
+def thesis_clusters(adata: ad.AnnData,
+                    res: str='hires',
+                    colour: str = 'multires_clst',
+                    k: int = 20,
+                    alpha: float=0.0,
+                    lw: float=0.9,
+                    title: str = '', 
+                    save_path: str = '.'):
+
+    ''' Main function for plotting cluster visualisations for thesis. 
+    Parameters
+    ----------
+    adata : AnnData
+        ST data, should contain the clusters labels
+    colour: str = 'multires_clst'
+        cluster label found in adata.obs.columns
+    k: int = 20
+        Number of clusters, default is 20
+    alpha : float, default=0.0
+        Transparency level
+    lw : float, default=0.9
+        Line width of spatial spot boundarie
+    title: str, default=''
+        Title displayed above the plot
+    save_path: str = '.'
+        Path to save image
+    '''
+    library_id = list(adata.uns['spatial'].keys())[0]
 
     # images
     images = adata.uns['spatial'][library_id]['images']
@@ -73,9 +98,6 @@ def thesis_clusters(adata, library_id: str = '', res: str='hires', colour: str =
 
     custom_colors = complete_palette[:k]
     custom_cmap = ListedColormap(custom_colors)
-
-        # categorical colormap
-    #cmap = cm.get_cmap("tab20", n_clusters)
     cluster_colors = {cl: custom_cmap(i) for i, cl in enumerate(unique_clusters)}
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 6), dpi=200)
@@ -106,7 +128,7 @@ def thesis_clusters(adata, library_id: str = '', res: str='hires', colour: str =
 
 def plot_clusters(adata, colour: str = 'multires_clst', k: int = 20, save_path: str = '.'):
     """ 
-    Plots the clusters on the tissue with spatial_scatter and saves the image. 
+    Plots the clusters on the tissue with spatial_scatter and saves the image. Currently not used.
     Parameters
     ----------
     adata : AnnData
@@ -139,10 +161,16 @@ def plot_clusters(adata, colour: str = 'multires_clst', k: int = 20, save_path: 
     plt.savefig(save_path, dpi=150)  # Save before showing
     plt.show() 
 
-def plot_cluster_boundaries(adata, library_id: str = '', res: str='hires', colour: str = 'multires_clst', k: int = 20, alpha: float=0.0, lw: float=0.9,
-                           title: str = '', save_path: str = '.'):
+def plot_cluster_boundaries(adata: ad.AnnData, 
+                            res: str='hires', 
+                            colour: str = 'multires_clst', 
+                            k: int = 20, 
+                            alpha: float=0.0, 
+                            lw: float=0.9,
+                            title: str = '', 
+                            save_path: str = '.'):
     """ 
-    Plots the cluster boundaries on the original tissue image and saves the image.
+    Plots the cluster boundaries on the original tissue image and saves the image. Currently not used.
     Parameters
     ----------
     adata : AnnData
@@ -159,8 +187,7 @@ def plot_cluster_boundaries(adata, library_id: str = '', res: str='hires', colou
         Path to save image
     """ 
     
-    if library_id == '':
-        library_id = list(adata.uns['spatial'].keys())[0]
+    library_id = list(adata.uns['spatial'].keys())[0]
 
     # images
     images = adata.uns['spatial'][library_id]['images']
@@ -221,8 +248,6 @@ def plot_cluster_boundaries(adata, library_id: str = '', res: str='hires', colou
     custom_colors = complete_palette[:k]
     custom_cmap = ListedColormap(custom_colors)
 
-        # categorical colormap
-    #cmap = cm.get_cmap("tab20", n_clusters)
     cluster_colors = {cl: custom_cmap(i) for i, cl in enumerate(unique_clusters)}
 
     plt.figure(figsize=(6, 6), dpi=150)

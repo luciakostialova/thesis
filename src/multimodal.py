@@ -5,28 +5,20 @@ import anndata as ad
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Literal, List
 
-
-import importlib
 import image_segmentation
 import distances
 import clustering
-
-importlib.reload(image_segmentation)
-importlib.reload(distances)
-importlib.reload(clustering)
-
 
 def multimodal_distance(    
     adata_img_segmentation: ad.AnnData,
     adata_gene_expr: ad.AnnData,
     ssgsea_df: pd.DataFrame = None,
-    modality_combinations: Tuple[bool, bool] = None, # how I want to combine gexpr and gsets
-    # res: str = 'hires',
+    modality_combinations: Tuple[bool, bool] = None, 
     distance_gexpr: Optional[Literal["correlation"]] = None,
     use_pca: bool = True,
     distance_gset: Optional[Literal["euclidean"]] = None,
     superpixel: str = 'slic',
-    sigmas: List[int] = [0, 1, 2, 3],  # sigmas used in previous segmentation
+    sigmas: List[int] = [0, 1, 2, 3], 
     weight_combinations: List[Tuple[float, float]]  | None = None,
     cluster: bool = True,
     linkage: Optional[Literal["complete"]] = None,
@@ -35,7 +27,7 @@ def multimodal_distance(
     ):
 
     '''
-    Run comprehensive multimodal analysis combining image segmentation, gene expression, and gene set enrichment.
+    Run multimodal analysis combining image segmentation, gene expression, and gene set enrichment.
     
     Parameters
     ----------
@@ -44,48 +36,44 @@ def multimodal_distance(
     adata_gene_expr : AnnData, optional
         Gene expression data (required if geneexpr_level or geneset_level is True)
     ssgsea_df : pd.DataFrame, optional
-        Gene set enrichment analysis scores (required if geneset_level is True)
+        Gene set enrichment analysis scores (required if geneset_level is True). Currently only one gene set is supported.
     gene_set : str, optional
-        Gene set name/identifier
+        Gene set name/identifier. Currently only enrichment scores for one gene set are supported.
     modality_combinations : Tuple[bool, bool]
         Tuple of (geneexpr_level, geneset_level) indicating which modalities to include.
         Examples:
             (True, False)   - segmentation + gene expression
             (False, True)   - segmentation + gene sets
             (True, True)    - all three modalities
-    res : str, default 'hires'
-        Resolution level ('hires' or 'lowres')
     distance_gexpr : str, optional
-        Distance metric for gene expression ('correlation' supported)
+        Distance metric for gene expression ('correlation' is default)
     use_pca : bool, default True
         Whether to use PCA for gene expression distance calculation
     distance_gset : str, optional
-        Distance metric for gene sets ('euclidean' supported)
+        Distance metric for gene sets ('euclidean' is default)
     superpixel : str, default 'slic'
-        Superpixel segmentation method
+        Superpixel segmentation method. Methods 'slic' and 'seed' are available.
     sigmas : List[int], default [0, 1, 2, 3]
         List of sigma values used in previous segmentation
     weight_combinations : List[Tuple[float, float]], optional
         List of weight tuples (seg_weight, modality_weight) for combining distances.
-        If None, defaults to [(1, 1)]
+        If None, defaults to [(1, 1)] - no weighting. If all 3 modalities are used - no weighting is applied default.
     cluster : bool, default True
         Whether to perform hierarchical clustering after distance calculation
     linkage : str, optional
-        Linkage method for clustering ('complete' is used)
+        Linkage method for clustering ('complete' is default)
     k : List[int], default [8, 16, 20, 32]
         List of cluster numbers k to compute if cluster=True
     output_dir : str, default "multimodal_results"
         Directory path to save results
     '''
 
-    # Create output directory
     output_path = Path(output_dir)
     output_path.mkdir(exist_ok=True)
 
     if weight_combinations is None:
         weight_combinations = [(1,1)]
 
-    # save distances to copy of adata_gene_expr
     adata_gexpr = adata_gene_expr.copy()
 
     if modality_combinations is None:
@@ -135,7 +123,9 @@ def multimodal_distance(
             processed_adata.write(adata_path)
 
      
-def get_modality_name(geneexpr_level: bool, geneset_level: bool, weights: Optional[Tuple[float, float]] = None) -> str:
+def get_modality_name(geneexpr_level: bool, 
+                      geneset_level: bool, 
+                      weights: Optional[Tuple[float, float]] = None) -> str:
     """ Generate descriptive modality name for filename. """
     
     base_name = ""
@@ -154,7 +144,7 @@ def get_modality_name(geneexpr_level: bool, geneset_level: bool, weights: Option
         w1, w2 = weights
         weight_suffix = f"_weights_{w1}_{w2}"
     else:
-        weight_suffix = ""  # No weight suffix when no weights are applied
+        weight_suffix = ""
     
     return base_name + weight_suffix   
 
@@ -164,7 +154,7 @@ def run_img_segmentation(
     sigmas: List[int] = [0, 1, 2, 3],
     superpixel: str = "slic",
     res: str = "hires"
-    ):
+    ) -> ad.AnnData:
     ''' Run image segmentation for the given adata and save the segmentation labels and distances to adata.'''
 
     output_path = Path(output_dir)
@@ -177,11 +167,9 @@ def run_img_segmentation(
         
         coords, image = setup_segmentation(adata=adata_copy, res=res)
 
-        # --- segmentation labels are saved to adata_copy
-        image_segmentation._perform_segmentation(adata_copy, image, coords, sigma, superpixel)
+        image_segmentation.perform_segmentation(adata_copy, image, coords, sigma, superpixel)
 
-        # --- segmentation distance is saved to adata_copy
-        image_segmentation._get_segmentation_distance(adata=adata_copy, coords=coords, sigma=sigma, superpixel=superpixel)
+        image_segmentation.get_segmentation_distance(adata=adata_copy, coords=coords, sigma=sigma, superpixel=superpixel)
 
         print(f"Segmentation distance saved to adata.")
 
@@ -191,7 +179,7 @@ def run_img_segmentation(
     return adata_copy
 
 
-def setup_segmentation(adata, res):
+def setup_segmentation(adata: ad.AnnData, res: str = 'hires'):
     ''' Setup for the analysis: Image data, coordinates, scalefactors are loaded.'''
     
     # images
